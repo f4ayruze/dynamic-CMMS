@@ -1,6 +1,6 @@
 #  Dynamic CMMS (Computerized Maintenance Management System)
 
-purwarupa (prototype) aplikasi web untuk manajemen, pemeliharaan, dan kalibrasi alat kesehatan di rumah sakit. Dirancang dengan antarmuka **Neo-Brutalism (Medical Theme)** yang ringan, responsif, dan mudah digunakan oleh teknisi elektromedis di lapangan.
+purwarupa (prototype) aplikasi web untuk manajemen, pemeliharaan, dan kalibrasi alat kesehatan di rumah sakit. Dirancang dengan antarmuka yang ringan, responsif, dan mudah digunakan oleh teknisi elektromedis di lapangan.
 
 ##  Fitur Utama
 
