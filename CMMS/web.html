@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> CMMS - Medical UI</title>
+    <link rel="stylesheet" href="web.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+<div class="app-container">
+    <header id="mainHeader">
+        <div class="time"><span class="cross-icon">+</span> Dynamic CMMS </div>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="bukaModal('searchModal')">🔍</button>
+            <button class="icon-btn" onclick="bukaModal('settingsModal')">⚙️</button>
+        </div>
+    </header>
+
+    <div id="dashboardView">
+        <h1>Manajemen<br>Alat Medis.</h1>
+
+        <div class="scanner-container" id="scannerBtnWrap">
+            <div class="big-scanner-btn" onclick="bukaKamera()">
+                <div class="scan-frame"><div class="scan-line"></div></div>
+                <span class="label">SCAN QR</span>
+            </div>
+        </div>
+        
+        <div id="cameraArea" style="display: none; flex-direction: column; align-items: center; margin-bottom: 30px;">
+            <div id="reader" style="width: 100%; max-width: 300px; border-radius: 12px; overflow: hidden; border: 3px solid var(--black); box-shadow: 4px 4px 0 var(--med-blue);"></div>
+            <button class="btn-submit btn-red" onclick="tutupKamera()" style="width: 150px; margin-top: 15px;">Batal Scan</button>
+        </div>
+
+        <div id="peringatanPM"></div>
+
+        <h2>Menu Cepat</h2>
+        <div class="dashboard-grid">
+            <div class="folder-card" onclick="bukaHalaman('page-maintenance')">
+                <div class="folder-tab tab-blue">🗄️</div>
+                <div class="doc-slip doc-1">Daftar Alat Baru</div>
+                <div class="doc-slip doc-2">Form Data</div>
+                <div class="doc-slip doc-3">Jadwal PM</div>
+                <div class="folder-body"><h3>Maintenance</h3><p>Registrasi & EM Score</p></div>
+            </div>
+
+            <div class="folder-card" onclick="bukaHalaman('page-kalibrasi')">
+                <div class="folder-tab tab-green">🔧</div>
+                <div class="doc-slip doc-1">Titik Uji</div>
+                <div class="doc-slip doc-2">Form Kalibrasi</div>
+                <div class="doc-slip doc-3">Toleransi</div>
+                <div class="folder-body"><h3>Kalibrasi</h3><p>Eksekusi Standar SOP</p></div>
+            </div>
+
+            <div class="folder-card" onclick="bukaHalaman('page-perbaikan')">
+                <div class="folder-tab tab-orange">🛠️</div>
+                <div class="doc-slip doc-1">Update Status</div>
+                <div class="doc-slip doc-2">Catat Kerusakan</div>
+                <div class="doc-slip doc-3">Selesai Servis</div>
+                <div class="folder-body"><h3>Perbaikan</h3><p>Tindak Lanjut & Override</p></div>
+            </div>
+
+            <div class="folder-card" onclick="bukaHalaman('page-inventaris')">
+                <div class="folder-tab tab-white">📊</div>
+                <div class="doc-slip doc-1">List Alat</div>
+                <div class="doc-slip doc-2">Status Laik</div>
+                <div class="doc-slip doc-3">Pemutihan</div>
+                <div class="folder-body"><h3>Inventaris</h3><p>Database Master Alat</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HALAMAN MAINTENANCE -->
+    <div class="page-content" id="page-maintenance">
+        <button class="back-btn" onclick="kembaliKeHome()">← Kembali ke Dashboard</button>
+        <h2>🗄️ Registrasi & EM Score</h2>
+        <div class="form-group"><label>ID Alat / Nomor Inventaris:</label><input type="text" id="m_id" placeholder="Misal: IP-001"></div>
+        <div class="form-group"><label>Kategori Alat (SOP Pabrik):</label><select id="m_kategori"><option value="Suction Pump">Suction Pump (± 5.0 mmHg)</option><option value="Infusion Pump">Infusion Pump (± 5.0 ml/h)</option><option value="Syringe Pump">Syringe Pump (± 2.0 ml/h)</option></select></div>
+        <div class="form-group"><label>Tanggal PM Terakhir / Pendaftaran:</label><input type="date" id="m_tanggal"></div>
+        <div class="form-group"><label>Fungsi Alat (F):</label><select id="m_f"><option value="10">Terapi - Life Support (10)</option><option value="7">Diagnostik - Monitoring Kritis (7)</option><option value="5">Analitik (5)</option></select></div>
+        <div class="form-group"><label>Risiko Fisik (R):</label><select id="m_r"><option value="5">Kematian Pasien (5)</option><option value="4">Cedera Operator (4)</option><option value="2">Kerusakan Alat (2)</option></select></div>
+        <div class="form-group"><label>Pemeliharaan (M):</label><select id="m_m"><option value="5">Ekstensif / Sering (5)</option><option value="3">Rata-rata (3)</option><option value="1">Minimal / Visual (1)</option></select></div>
+        <div class="form-group"><label>Riwayat Insiden (H):</label><select id="m_h"><option value="2">Signifikan (+2)</option><option value="0">Rata-rata (0)</option><option value="-1">Sangat Minimal (-1)</option></select></div>
+        <button class="btn-submit" onclick="simpanAlat()">💾 Simpan Data Alat</button>
+        <div id="m_alert" class="alert"></div>
+    </div>
+
+    <!-- HALAMAN KALIBRASI -->
+    <div class="page-content" id="page-kalibrasi">
+        <button class="back-btn" onclick="kembaliKeHome()">← Kembali ke Dashboard</button>
+        <h2>🔧 Modul Eksekusi Kalibrasi</h2>
+        <div class="form-group"><label>Pilih ID Alat yang akan diuji:</label><select id="k_id_alat"></select></div>
+        <label>Titik Ukur & 6 Percobaan:</label>
+        
+        <!-- Tabel sekarang bisa digeser ke kanan di HP jika angkanya panjang -->
+        <div class="table-responsive">
+            <table id="tabel_uji_kalibrasi">
+                <thead><tr><th>Titik</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th><th>P6</th><th>🗑️</th></tr></thead>
+                <tbody id="tbody_uji_kalibrasi"></tbody>
+            </table>
+        </div>
+        <button class="btn-submit btn-small" style="background:var(--white);" onclick="tambahBarisKalibrasi()">➕ Tambah Titik Uji Baru</button>
+        <button class="btn-submit btn-green" onclick="hitungKalibrasi()">🚀 Hitung Error & Auto-Update</button>
+        <div id="k_alert" class="alert"></div>
+    </div>
+
+    <!-- HALAMAN PERBAIKAN -->
+    <div class="page-content" id="page-perbaikan">
+        <button class="back-btn" onclick="kembaliKeHome()">← Kembali ke Dashboard</button>
+        <h2>🛠️ Tindak Lanjut & Perbaikan</h2>
+        <p style="font-size:12px; color:gray; margin-bottom:15px;">Ubah status alat secara manual jika alat tiba-tiba rusak atau selesai diservis.</p>
+        
+        <div class="form-group"><label>Pilih ID Alat:</label><select id="p_id_alat"></select></div>
+        <div class="form-group">
+            <label>Ubah Status Menjadi:</label>
+            <select id="p_status_baru">
+                <option value="🟢 LAIK PAKAI">🟢 LAIK PAKAI (Berfungsi Normal)</option>
+                <option value="🟡 LAIK BERSYARAT">🟡 LAIK BERSYARAT (Berfungsi Sebagian)</option>
+                <option value="🔧 DALAM PERBAIKAN">🔧 DALAM PERBAIKAN (Sedang Diservis)</option>
+                <option value="🔴 RUSAK / AFKIR">🔴 RUSAK / AFKIR (Tidak Bisa Dipakai)</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Catatan Teknisi (Opsional):</label><textarea id="p_catatan" rows="3" placeholder="Tuliskan detail kerusakan atau riwayat servis di sini..."></textarea></div>
+        <button class="btn-submit btn-orange" onclick="simpanPerbaikan()">📝 Simpan Update Status</button>
+        <div id="p_alert" class="alert"></div>
+    </div>
+
+    <!-- HALAMAN INVENTARIS -->
+    <div class="page-content" id="page-inventaris">
+        <button class="back-btn" onclick="kembaliKeHome()">← Kembali ke Dashboard</button>
+        <h2>📊 Database Seluruh Alat</h2>
+        
+        <!-- KOTAK RINGKASAN DATA (TOTAL, BERFUNGSI, PERBAIKAN) -->
+        <div class="summary-container" id="summary_inventaris">
+            <!-- Akan diisi otomatis oleh JavaScript -->
+        </div>
+
+        <div class="tab-controls">
+            <button class="tab-btn active" id="tab_berfungsi" onclick="gantiTabInventaris('berfungsi')">🟢 Berfungsi</button>
+            <button class="tab-btn" id="tab_perbaikan" onclick="gantiTabInventaris('perbaikan')">🔧 Perbaikan</button>
+        </div>
+
+        <div class="table-responsive">
+            <table id="tabel_inventaris">
+                <thead><tr><th>ID Alat</th><th>Kategori</th><th>PM Berikutnya</th><th>Status Akhir</th><th>Aksi</th></tr></thead>
+                <tbody id="tbody_inventaris"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div id="searchModal" class="modal">
+    <div class="modal-content">
+        <h3>🔍 Cari Alat Medis</h3>
+        <input type="text" id="searchInput" onkeyup="cariAlat()" placeholder="Ketik ID atau Kategori Alat...">
+        <div id="searchResults" style="max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
+        <button class="btn-submit" onclick="tutupModal('searchModal')" style="margin-top: 20px;">Tutup</button>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h3>⚙️ Pengaturan Sistem</h3>
+        <button class="btn-submit btn-green" onclick="exportDatabase()">📥 Backup / Export Database</button>
+        <button class="btn-submit" onclick="tutupModal('settingsModal')" style="margin-top: 20px; background:var(--white);">Tutup Pengaturan</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
