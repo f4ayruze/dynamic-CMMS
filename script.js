@@ -8,17 +8,27 @@ window.onload = function() {
     document.getElementById('m_tanggal').value = new Date().toISOString().split('T')[0];
 };
 
-// ================= FITUR KAMERA QR CODE =================
+// ================= FITUR KAMERA QR CODE (VERSI MOBILE ROBUST) =================
 function bukaKamera() {
     document.getElementById('scannerBtnWrap').style.display = 'none';
     document.getElementById('cameraArea').style.display = 'flex';
     html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-        { facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
-        (decodedText) => { tutupKamera(); bukaModal('searchModal'); document.getElementById('searchInput').value = decodedText; cariAlat(); },
-        (err) => {}
-    ).catch((err) => { tutupKamera(); alert("⚠️ Gagal mengakses kamera."); });
+
+    Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+            let cameraId = devices[devices.length - 1].id;
+            html5QrCode.start(
+                cameraId, 
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                    tutupKamera(); bukaModal('searchModal'); document.getElementById('searchInput').value = decodedText; cariAlat();
+                },
+                (err) => {} 
+            ).catch((err) => { tutupKamera(); alert("⚠️ Gagal menyalakan lensa. Error: " + err); });
+        } else { tutupKamera(); alert("⚠️ Tidak ada kamera terdeteksi di perangkat ini."); }
+    }).catch(err => { tutupKamera(); alert("⚠️ Izin kamera ditolak. Pastikan Anda menekan 'Allow/Izinkan'."); });
 }
+
 function tutupKamera() {
     if (html5QrCode) { html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e)); }
     document.getElementById('cameraArea').style.display = 'none';
@@ -33,7 +43,7 @@ function bukaHalaman(idHalaman) {
 
     if (idHalaman === 'page-kalibrasi') { muatDropdownKalibrasi(); resetTabelKalibrasi(); }
     if (idHalaman === 'page-perbaikan') { muatDropdownPerbaikan(); } 
-    if (idHalaman === 'page-inventaris') { renderTabelInventaris(); } // Render ulang tabel dan ringkasan
+    if (idHalaman === 'page-inventaris') { renderTabelInventaris(); } 
 }
 function kembaliKeHome() {
     document.querySelectorAll('.page-content').forEach(page => { page.style.display = 'none'; });
@@ -157,25 +167,24 @@ function gantiTabInventaris(tab) {
     tabInventarisAktif = tab;
     document.getElementById('tab_berfungsi').className = (tab === 'berfungsi') ? 'tab-btn active' : 'tab-btn';
     document.getElementById('tab_perbaikan').className = (tab === 'perbaikan') ? 'tab-btn active' : 'tab-btn';
-    renderTabelInventaris(); // Ini akan otomatis render ulang tabel saja (tidak reset ringkasan utamanya)
+    renderTabelInventaris(); 
 }
 
 function renderTabelInventaris() {
     const tbody = document.getElementById('tbody_inventaris'); tbody.innerHTML = "";
     
-    // 1. Hitung Ringkasan Data (Summary)
+    // 1. Hitung Ringkasan Data
     const totalAlat = db_alat.length;
     const totalPerbaikan = db_alat.filter(a => a.status.includes("TIDAK LAIK") || a.status.includes("PERBAIKAN") || a.status.includes("RUSAK")).length;
     const totalBerfungsi = totalAlat - totalPerbaikan;
 
-    // Masukkan ke dalam kotak HTML
     document.getElementById('summary_inventaris').innerHTML = `
         <div class="summary-box biru"><h4>Total Alat</h4><span>${totalAlat}</span></div>
         <div class="summary-box hijau"><h4>Berfungsi</h4><span>${totalBerfungsi}</span></div>
         <div class="summary-box merah"><h4>Perbaikan</h4><span>${totalPerbaikan}</span></div>
     `;
     
-    // 2. Filter Tabel Berdasarkan Tab
+    // 2. Filter Tabel
     const dataTerfilter = db_alat.filter(alat => {
         const butuhPerbaikan = alat.status.includes("TIDAK LAIK") || alat.status.includes("PERBAIKAN") || alat.status.includes("RUSAK");
         if(tabInventarisAktif === 'berfungsi') return !butuhPerbaikan;
@@ -202,6 +211,63 @@ function renderTabelInventaris() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+// ================= EKSPOR PDF (LAPORAN ANALISIS CERDAS) =================
+function cetakPDF() {
+    try {
+        // Cek apakah mesin PDF berhasil dimuat oleh index.html
+        if (!window.jspdf) {
+            alert("⏳ Mesin PDF sedang dimuat oleh browser. Pastikan koneksi internet aktif atau tunggu beberapa detik.");
+            return;
+        }
+
+        // Cegah error jika tidak ada alat yang didaftarkan
+        if (db_alat.length === 0) {
+            alert("⚠️ Database masih kosong! Silakan daftarkan minimal 1 alat terlebih dahulu di menu Maintenance.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'pt', 'a4'); 
+
+        doc.setFontSize(16); doc.text("Laporan Inventaris & Status Kelayakan Alat Medis", 40, 40);
+        doc.setFontSize(10); doc.text("Dicetak pada: " + new Date().toLocaleString("id-ID"), 40, 60);
+
+        const tableColumn = ["ID Alat", "Kategori", "Status Terkini", "Analisis & Kesimpulan Kelayakan"];
+        const tableRows = [];
+
+        db_alat.forEach(alat => {
+            let kesimpulan = "";
+            const toleransi = MASTER_SOP[alat.kategori] || "-";
+
+            if (alat.status.includes("LAIK PAKAI")) {
+                kesimpulan = `Alat berfungsi sangat baik. Lolos uji kalibrasi dengan error dalam batas aman SOP Pabrik (± ${toleransi}). EM Score: ${alat.em_score}. Sepenuhnya aman dioperasikan.`;
+            } else if (alat.status.includes("LAIK BERSYARAT")) {
+                kesimpulan = `Berfungsi namun perlu pengawasan. Ada titik uji melenceng dari toleransi standar (± ${toleransi}), tetapi belum fatal. Disarankan kalibrasi ulang dalam waktu dekat.`;
+            } else if (alat.status.includes("TIDAK LAIK") || alat.status.includes("RUSAK")) {
+                kesimpulan = `STATUS BERBAHAYA. Gagal memenuhi standar kalibrasi (melampaui toleransi ± ${toleransi}) atau ada kerusakan fisik. Tarik alat dari layanan klinis segera.`;
+            } else if (alat.status.includes("PERBAIKAN")) {
+                kesimpulan = `Sedang dalam masa servis teknisi. Catatan: "${alat.catatan || 'Tidak ada catatan'}". Alat tidak boleh digunakan sampai selesai diservis dan dikalibrasi ulang.`;
+            } else {
+                kesimpulan = `Data registrasi awal. Belum ada rekam uji kalibrasi. Membutuhkan jadwal inspeksi (Jadwal PM: ${alat.jadwal_pm}).`;
+            }
+            tableRows.push([alat.id, alat.kategori, alat.status, kesimpulan]);
+        });
+
+        doc.autoTable({
+            head: [tableColumn], body: tableRows, startY: 80,
+            styles: { fontSize: 9, cellPadding: 6 },
+            columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 100 }, 2: { cellWidth: 110 }, 3: { cellWidth: 'auto' } },
+            headStyles: { fillColor: [56, 189, 248], textColor: 15 } 
+        });
+
+        doc.save("Laporan_Analisis_CMMS.pdf");
+        
+    } catch (error) {
+        console.error(error);
+        alert("❌ Terjadi kesalahan sistem: " + error.message);
+    }
 }
 
 function hapusAlat(id) { if(confirm(`Memutihkan (menghapus) alat ${id}?`)) { db_alat = db_alat.filter(alat => alat.id !== id); simpanDatabase(); renderTabelInventaris(); cekPeringatanPM(); } }
