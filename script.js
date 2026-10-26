@@ -8,7 +8,7 @@ window.onload = function() {
     document.getElementById('m_tanggal').value = new Date().toISOString().split('T')[0];
 };
 
-// ================= FITUR KAMERA QR CODE (VERSI MOBILE ROBUST) =================
+// ================= FITUR KAMERA QR CODE =================
 function bukaKamera() {
     document.getElementById('scannerBtnWrap').style.display = 'none';
     document.getElementById('cameraArea').style.display = 'flex';
@@ -215,16 +215,15 @@ function renderTabelInventaris() {
 
 // ================= EKSPOR PDF (LAPORAN ANALISIS CERDAS) =================
 function cetakPDF() {
+    alert("⏳ Sedang memproses dokumen PDF... Mohon tunggu sebentar.");
+    
     try {
-        // Cek apakah mesin PDF berhasil dimuat oleh index.html
         if (!window.jspdf) {
-            alert("⏳ Mesin PDF sedang dimuat oleh browser. Pastikan koneksi internet aktif atau tunggu beberapa detik.");
+            alert("❌ GAGAL: Mesin pembuat PDF belum selesai diunduh oleh browser. Pastikan koneksi internet lancar lalu coba lagi.");
             return;
         }
-
-        // Cegah error jika tidak ada alat yang didaftarkan
         if (db_alat.length === 0) {
-            alert("⚠️ Database masih kosong! Silakan daftarkan minimal 1 alat terlebih dahulu di menu Maintenance.");
+            alert("⚠️ GAGAL: Database masih kosong! Silakan daftarkan minimal 1 alat terlebih dahulu.");
             return;
         }
 
@@ -241,6 +240,10 @@ function cetakPDF() {
             let kesimpulan = "";
             const toleransi = MASTER_SOP[alat.kategori] || "-";
 
+            // FILTER: Buang semua emoji khusus dari status dan jadwal PM agar font PDF tidak error
+            const statusPDF = (alat.status || "").replace(/🟢|🟡|🔴|🔧/g, '').trim();
+            const jadwalPDF = (alat.jadwal_pm || "").replace(/🟢|🟡|🔴|🔧/g, '').trim();
+
             if (alat.status.includes("LAIK PAKAI")) {
                 kesimpulan = `Alat berfungsi sangat baik. Lolos uji kalibrasi dengan error dalam batas aman SOP Pabrik (± ${toleransi}). EM Score: ${alat.em_score}. Sepenuhnya aman dioperasikan.`;
             } else if (alat.status.includes("LAIK BERSYARAT")) {
@@ -248,11 +251,13 @@ function cetakPDF() {
             } else if (alat.status.includes("TIDAK LAIK") || alat.status.includes("RUSAK")) {
                 kesimpulan = `STATUS BERBAHAYA. Gagal memenuhi standar kalibrasi (melampaui toleransi ± ${toleransi}) atau ada kerusakan fisik. Tarik alat dari layanan klinis segera.`;
             } else if (alat.status.includes("PERBAIKAN")) {
-                kesimpulan = `Sedang dalam masa servis teknisi. Catatan: "${alat.catatan || 'Tidak ada catatan'}". Alat tidak boleh digunakan sampai selesai diservis dan dikalibrasi ulang.`;
+                kesimpulan = `Sedang dalam masa servis teknisi. Catatan: "${alat.catatan || 'Tidak ada catatan khusus'}". Alat tidak boleh digunakan sampai selesai diservis dan dikalibrasi ulang.`;
             } else {
-                kesimpulan = `Data registrasi awal. Belum ada rekam uji kalibrasi. Membutuhkan jadwal inspeksi (Jadwal PM: ${alat.jadwal_pm}).`;
+                kesimpulan = `Data registrasi awal. Belum ada rekam uji kalibrasi. Membutuhkan jadwal inspeksi (Jadwal PM: ${jadwalPDF}).`;
             }
-            tableRows.push([alat.id, alat.kategori, alat.status, kesimpulan]);
+            
+            // Masukkan variabel yang emojinya sudah dibersihkan (statusPDF) ke dalam baris tabel PDF
+            tableRows.push([alat.id, alat.kategori, statusPDF, kesimpulan]);
         });
 
         doc.autoTable({
@@ -266,7 +271,7 @@ function cetakPDF() {
         
     } catch (error) {
         console.error(error);
-        alert("❌ Terjadi kesalahan sistem: " + error.message);
+        alert("❌ Terjadi kesalahan fatal pada sistem pembuat PDF: " + error.message);
     }
 }
 
