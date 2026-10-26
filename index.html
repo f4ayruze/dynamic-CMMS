@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> CMMS - Medical UI</title>
+    <title>Smart CMMS - Medical UI</title>
     <link rel="stylesheet" href="web.css">
+    
+    <!-- Library QR Scanner -->
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Library Ekspor PDF Laporan -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
 <div class="app-container">
     <header id="mainHeader">
-        <div class="time"><span class="cross-icon">+</span> Dynamic CMMS </div>
+        <div class="time"><span class="cross-icon">+</span> CMMS Kemenkes</div>
         <div class="header-actions">
             <button class="icon-btn" onclick="bukaModal('searchModal')">🔍</button>
             <button class="icon-btn" onclick="bukaModal('settingsModal')">⚙️</button>
@@ -93,7 +98,6 @@
         <div class="form-group"><label>Pilih ID Alat yang akan diuji:</label><select id="k_id_alat"></select></div>
         <label>Titik Ukur & 6 Percobaan:</label>
         
-        <!-- Tabel sekarang bisa digeser ke kanan di HP jika angkanya panjang -->
         <div class="table-responsive">
             <table id="tabel_uji_kalibrasi">
                 <thead><tr><th>Titik</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th><th>P6</th><th>🗑️</th></tr></thead>
@@ -131,15 +135,14 @@
         <button class="back-btn" onclick="kembaliKeHome()">← Kembali ke Dashboard</button>
         <h2>📊 Database Seluruh Alat</h2>
         
-        <!-- KOTAK RINGKASAN DATA (TOTAL, BERFUNGSI, PERBAIKAN) -->
-        <div class="summary-container" id="summary_inventaris">
-            <!-- Akan diisi otomatis oleh JavaScript -->
-        </div>
+        <div class="summary-container" id="summary_inventaris"></div>
 
         <div class="tab-controls">
             <button class="tab-btn active" id="tab_berfungsi" onclick="gantiTabInventaris('berfungsi')">🟢 Berfungsi</button>
             <button class="tab-btn" id="tab_perbaikan" onclick="gantiTabInventaris('perbaikan')">🔧 Perbaikan</button>
         </div>
+
+        <button class="btn-submit btn-orange" onclick="cetakPDF()" style="margin-bottom: 15px; box-shadow: 4px 4px 0 var(--black);">📄 Ekspor Laporan PDF (Otomatis)</button>
 
         <div class="table-responsive">
             <table id="tabel_inventaris">
@@ -163,7 +166,7 @@
 <div id="settingsModal" class="modal">
     <div class="modal-content">
         <h3>⚙️ Pengaturan Sistem</h3>
-        <button class="btn-submit btn-green" onclick="exportDatabase()">📥 Backup / Export Database</button>
+        <button class="btn-submit btn-green" onclick="exportDatabase()">📥 Backup JSON Database</button>
         <button class="btn-submit" onclick="tutupModal('settingsModal')" style="margin-top: 20px; background:var(--white);">Tutup Pengaturan</button>
     </div>
 </div>
