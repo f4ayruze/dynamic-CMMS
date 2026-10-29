@@ -10,7 +10,7 @@
 
 <div class="app-container">
     <header id="mainHeader">
-        <div class="time"><span class="cross-icon">+</span> DYANAMIC CMMS </div>
+        <div class="time"><span class="cross-icon">+</span> CMMS Kemenkes</div>
         <div class="header-actions">
             <button class="icon-btn" onclick="bukaModal('searchModal')">🔍</button>
             <button class="icon-btn" onclick="bukaModal('settingsModal')">⚙️</button>
@@ -32,6 +32,7 @@
             <button class="btn-submit btn-red" onclick="tutupKamera()" style="width: 150px; margin-top: 15px;">Batal Scan</button>
         </div>
 
+        <!-- WADAH PERINGATAN PM YANG SUDAH DIPERBARUI -->
         <div id="peringatanPM"></div>
 
         <h2>Menu Cepat</h2>
@@ -150,8 +151,9 @@
 <!-- ================= MODALS ================= -->
 <div id="searchModal" class="modal">
     <div class="modal-content">
-        <h3>🔍 Cari Alat Medis</h3>
+        <h3 style="margin-bottom:10px;">🔍 Cari Alat Medis</h3>
         <input type="text" id="searchInput" onkeyup="cariAlat()" placeholder="Ketik ID atau Kategori Alat...">
+        <!-- Hasil pencarian akan muncul di sini dan bisa dipencet -->
         <div id="searchResults" style="max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
         <button class="btn-submit" onclick="tutupModal('searchModal')" style="margin-top: 20px;">Tutup</button>
     </div>
@@ -165,18 +167,15 @@
     </div>
 </div>
 
-<!-- MODAL BARU: KOTAK CETAK QR CODE -->
+<!-- MODAL QR CODE -->
 <div id="qrModal" class="modal">
     <div class="modal-content" style="text-align: center;">
         <h3 style="margin-bottom: 15px;">📱 Label QR Code Alat</h3>
-        
-        <!-- Kotak Putih ini yang akan diprint -->
         <div id="qrContainer" style="background: white; padding: 20px; border: 4px solid var(--black); border-radius: 12px; display: inline-block;">
             <div id="qrcodeBox" style="display: flex; justify-content: center; margin-bottom: 10px;"></div>
             <p id="qrLabel" style="font-weight: 700; font-size: 18px; letter-spacing: 1px;"></p>
             <p id="qrKategori" style="font-size: 11px; color: gray;"></p>
         </div>
-        
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button class="btn-submit btn-blue" onclick="cetakAreaQR()">🖨️ Cetak</button>
             <button class="btn-submit" style="background:var(--white);" onclick="tutupModal('qrModal')">Tutup</button>
@@ -188,9 +187,8 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
-<!-- Library Baru: Pembuat QR Code -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<script src="script.js?v=3"></script>
+<script src="script.js?v=4"></script>
 </body>
 </html>

@@ -17,22 +17,16 @@ function bukaKamera() {
     Html5Qrcode.getCameras().then(devices => {
         if (devices && devices.length) {
             let cameraId = devices[devices.length - 1].id;
-            html5QrCode.start(
-                cameraId, 
-                { fps: 10, qrbox: { width: 220, height: 220 } },
-                (decodedText) => {
-                    tutupKamera(); bukaModal('searchModal'); document.getElementById('searchInput').value = decodedText; cariAlat();
-                },
+            html5QrCode.start( cameraId, { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => { tutupKamera(); bukaModal('searchModal'); document.getElementById('searchInput').value = decodedText; cariAlat(); },
                 (err) => {} 
             ).catch((err) => { tutupKamera(); alert("⚠️ Gagal menyalakan lensa. Error: " + err); });
         } else { tutupKamera(); alert("⚠️ Tidak ada kamera terdeteksi di perangkat ini."); }
     }).catch(err => { tutupKamera(); alert("⚠️ Izin kamera ditolak. Pastikan Anda menekan 'Allow/Izinkan'."); });
 }
-
 function tutupKamera() {
     if (html5QrCode) { html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e)); }
-    document.getElementById('cameraArea').style.display = 'none';
-    document.getElementById('scannerBtnWrap').style.display = 'flex';
+    document.getElementById('cameraArea').style.display = 'none'; document.getElementById('scannerBtnWrap').style.display = 'flex';
 }
 
 // ================= NAVIGASI =================
@@ -53,7 +47,7 @@ function kembaliKeHome() {
 function bukaModal(idModal) { document.getElementById(idModal).style.display = "flex"; if(idModal === 'searchModal') { document.getElementById('searchInput').value = ""; document.getElementById('searchResults').innerHTML = ""; } }
 function tutupModal(idModal) { document.getElementById(idModal).style.display = "none"; }
 
-// ================= PERINGATAN PM =================
+// ================= PERINGATAN PM (SCROLLABLE) =================
 function cekPeringatanPM() {
     const wadahPeringatan = document.getElementById('peringatanPM');
     let daftarAlatWarning = [];
@@ -61,28 +55,85 @@ function cekPeringatanPM() {
 
     db_alat.forEach(alat => {
         if(!alat.tanggal || alat.jadwal_pm.includes("Visual")) return; 
-        const tglPM = new Date(alat.tanggal);
-        let bulanInterval = alat.jadwal_pm.includes("6 Bulan") ? 6 : 12;
+        const tglPM = new Date(alat.tanggal); let bulanInterval = alat.jadwal_pm.includes("6 Bulan") ? 6 : 12;
         const jatuhTempo = new Date(tglPM.setMonth(tglPM.getMonth() + bulanInterval));
         const sisaHari = Math.ceil((jatuhTempo - hariIni) / (1000 * 60 * 60 * 24));
 
+        // Jika mendekati atau terlewat, masukkan ke daftar peringatan
         if (sisaHari <= 30 && sisaHari >= 0) { daftarAlatWarning.push(`<b>${alat.id}</b> (Sisa ${sisaHari} hari)`); } 
-        else if (sisaHari < 0) { daftarAlatWarning.push(`<b>${alat.id}</b> (<span style="color:var(--med-red)">Lewat ${Math.abs(sisaHari)} hari</span>)`); }
+        else if (sisaHari < 0) { daftarAlatWarning.push(`<b>${alat.id}</b> (<span style="color:var(--med-red)">Lewat ${Math.abs(sisaHari)} hr</span>)`); }
     });
-    if(daftarAlatWarning.length > 0) { wadahPeringatan.innerHTML = `<div class="warning-box"><div><b>Jadwal PM Mendekati / Lewat Waktu:</b><span>${daftarAlatWarning.join(', ')}</span></div></div>`; } 
-    else { wadahPeringatan.innerHTML = ""; }
+
+    if(daftarAlatWarning.length > 0) { 
+        // Mengubah daftar string menjadi list item (dibungkus div bergaris bawah)
+        let listHTML = daftarAlatWarning.map(item => `<div style="padding: 4px 0; border-bottom: 1px solid #CBD5E1;">${item}</div>`).join('');
+        
+        // Membungkus listHTML ke dalam div scrollable (max-height: 80px hanya muat ±3 baris, sisanya digulir)
+        wadahPeringatan.innerHTML = `
+            <div class="warning-box" style="align-items: center;">
+                <div style="font-size: 24px; padding-right: 5px;">💡</div>
+                <div style="flex: 1; overflow: hidden;">
+                    <b>Jadwal PM Mendekati / Lewat Waktu:</b>
+                    <div style="max-height: 80px; overflow-y: auto; padding-right: 5px; margin-top: 5px; font-size: 11px;">
+                        ${listHTML}
+                    </div>
+                </div>
+            </div>
+        `; 
+    } else { wadahPeringatan.innerHTML = ""; }
 }
 
-// ================= FITUR SEARCH & EXPORT =================
+// ================= FITUR SEARCH & JUMP TO INVENTARIS =================
 function cariAlat() {
     const keyword = document.getElementById('searchInput').value.toLowerCase();
     const resultDiv = document.getElementById('searchResults');
     resultDiv.innerHTML = "";
+    
     if(keyword.length < 1) return;
     const hasil = db_alat.filter(a => a.id.toLowerCase().includes(keyword) || a.kategori.toLowerCase().includes(keyword));
-    if(hasil.length === 0) { resultDiv.innerHTML = "<p style='font-size:12px; color:gray;'>Alat tidak ditemukan.</p>"; return; }
-    hasil.forEach(alat => { resultDiv.innerHTML += `<div class="search-result-item"><b>${alat.id}</b> - ${alat.kategori}<br><span style="font-size:11px; color:gray;">Status: ${alat.status}</span></div>`; });
+    
+    if(hasil.length === 0) { resultDiv.innerHTML = "<p style='font-size:12px; color:gray; text-align:center;'>Alat tidak ditemukan.</p>"; return; }
+    
+    hasil.forEach(alat => { 
+        // Membuat kotak pencarian secara dinamis dan menempelkan fungsi loncatKeInventaris saat diklik
+        const divBox = document.createElement('div');
+        divBox.className = 'search-result-item';
+        divBox.innerHTML = `<b>${alat.id}</b> - ${alat.kategori}<br><span style="font-size:11px; color:gray;">Status: ${alat.status}</span>`;
+        divBox.onclick = () => loncatKeInventaris(alat.id);
+        resultDiv.appendChild(divBox);
+    });
 }
+
+function loncatKeInventaris(idAlat) {
+    tutupModal('searchModal'); // Tutup pop-up pencarian
+    
+    const alat = db_alat.find(a => a.id === idAlat);
+    if(!alat) return;
+    
+    // Tentukan apakah alat ini ada di tab "Berfungsi" atau "Perbaikan"
+    const butuhPerbaikan = alat.status.includes("TIDAK LAIK") || alat.status.includes("PERBAIKAN") || alat.status.includes("RUSAK");
+    tabInventarisAktif = butuhPerbaikan ? 'perbaikan' : 'berfungsi';
+    
+    // Pindah ke Halaman Inventaris (fungsi ini akan me-render tabel ulang sesuai tab)
+    bukaHalaman('page-inventaris');
+    
+    // Beri jeda sangat singkat agar browser merender tabel HTML-nya terlebih dahulu
+    setTimeout(() => {
+        // Cari ID Baris di tabel (menghindari error spasi dengan regex pembersih)
+        const rowId = `row-${idAlat.replace(/\s+/g, '-')}`;
+        const targetRow = document.getElementById(rowId);
+        
+        if(targetRow) {
+            // Gulir layar (scroll) tepat ke baris tersebut
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Nyalakan efek warna kuning stabilo berkedip
+            targetRow.classList.add('row-highlight');
+            // Matikan efek highlight setelah 3 detik
+            setTimeout(() => { targetRow.classList.remove('row-highlight'); }, 3000);
+        }
+    }, 300);
+}
+
 function exportDatabase() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db_alat, null, 2));
     const dlAnchorElem = document.createElement('a'); dlAnchorElem.setAttribute("href", dataStr); dlAnchorElem.setAttribute("download", "Backup_CMMS.json"); dlAnchorElem.click();
@@ -93,12 +144,9 @@ function simpanAlat() {
     const id = document.getElementById('m_id').value; const kat = document.getElementById('m_kategori').value;
     const f = parseInt(document.getElementById('m_f').value); const r = parseInt(document.getElementById('m_r').value);
     const m = parseInt(document.getElementById('m_m').value); const h = parseInt(document.getElementById('m_h').value);
-    const tgl = document.getElementById('m_tanggal').value; 
-    const alertBox = document.getElementById('m_alert');
-    
+    const tgl = document.getElementById('m_tanggal').value; const alertBox = document.getElementById('m_alert');
     if(id === "" || tgl === "") { tampilAlert(alertBox, "ID Alat dan Tanggal wajib diisi!", "var(--med-red)"); return; }
-    const em_score = f + r + m + h;
-    let jadwal_pm = "🟢 Visual";
+    const em_score = f + r + m + h; let jadwal_pm = "🟢 Visual";
     if (em_score >= 12) jadwal_pm = "🔴 6 Bulan (Ekstensif)"; else if (em_score >= 9) jadwal_pm = "🟡 12 Bulan (Menengah)";
 
     const indeksAda = db_alat.findIndex(alat => alat.id === id);
@@ -130,12 +178,10 @@ function hitungKalibrasi() {
     const barisTabel = document.querySelectorAll('#tbody_uji_kalibrasi tr');
     if(barisTabel.length === 0) { tampilAlert(alertBox, "Minimal 1 titik ukur!", "var(--med-red)"); return; }
 
-    const dataAlat = db_alat.find(a => a.id === id_alat); const toleransi_maks = MASTER_SOP[dataAlat.kategori];
-    let jumlahGagal = 0;
-
+    const dataAlat = db_alat.find(a => a.id === id_alat); const toleransi_maks = MASTER_SOP[dataAlat.kategori]; let jumlahGagal = 0;
     barisTabel.forEach(tr => {
-        const titik = parseFloat(tr.querySelector('.k-input-titik').value) || 0;
-        let sum = 0; tr.querySelectorAll('.p-val').forEach(inp => sum += (parseFloat(inp.value) || 0));
+        const titik = parseFloat(tr.querySelector('.k-input-titik').value) || 0; let sum = 0; 
+        tr.querySelectorAll('.p-val').forEach(inp => sum += (parseFloat(inp.value) || 0));
         let errorPersen = 0; if(titik !== 0) { errorPersen = (((sum/6) - titik) / titik) * 100; }
         if(Math.abs(errorPersen) > toleransi_maks) { jumlahGagal++; }
     });
@@ -152,13 +198,9 @@ function muatDropdownPerbaikan() {
     else { db_alat.forEach(alat => { const opt = document.createElement('option'); opt.value = alat.id; opt.innerText = `${alat.id} - ${alat.kategori} (${alat.status})`; selectBox.appendChild(opt); }); }
 }
 function simpanPerbaikan() {
-    const id_alat = document.getElementById('p_id_alat').value;
-    const status_baru = document.getElementById('p_status_baru').value;
-    const alertBox = document.getElementById('p_alert');
-    if(!id_alat || id_alat === "Belum ada alat terdaftar") { tampilAlert(alertBox, "Pilih alat terlebih dahulu!", "var(--med-red)"); return; }
-
-    const dataAlat = db_alat.find(a => a.id === id_alat);
-    dataAlat.status = status_baru; dataAlat.catatan = document.getElementById('p_catatan').value;
+    const id_alat = document.getElementById('p_id_alat').value; const status_baru = document.getElementById('p_status_baru').value; const alertBox = document.getElementById('p_alert');
+    if(!id_alat || id_alat === "Belum ada alat terdaftar") { tampilAlert(alertBox, "Pilih alat!", "var(--med-red)"); return; }
+    const dataAlat = db_alat.find(a => a.id === id_alat); dataAlat.status = status_baru; dataAlat.catatan = document.getElementById('p_catatan').value;
     simpanDatabase(); tampilAlert(alertBox, `Status diubah: ${status_baru}`, "var(--med-orange)"); muatDropdownPerbaikan(); 
 }
 
@@ -185,14 +227,10 @@ function renderTabelInventaris() {
     
     const dataTerfilter = db_alat.filter(alat => {
         const butuhPerbaikan = alat.status.includes("TIDAK LAIK") || alat.status.includes("PERBAIKAN") || alat.status.includes("RUSAK");
-        if(tabInventarisAktif === 'berfungsi') return !butuhPerbaikan;
-        if(tabInventarisAktif === 'perbaikan') return butuhPerbaikan;
+        if(tabInventarisAktif === 'berfungsi') return !butuhPerbaikan; if(tabInventarisAktif === 'perbaikan') return butuhPerbaikan;
     });
 
-    if(dataTerfilter.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:gray; padding:15px;">Tidak ada alat di kategori ini.</td></tr>`;
-        return;
-    }
+    if(dataTerfilter.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="color:gray; padding:15px;">Tidak ada alat di kategori ini.</td></tr>`; return; }
 
     dataTerfilter.forEach(alat => {
         let tglTampil = "-";
@@ -200,9 +238,11 @@ function renderTabelInventaris() {
             let tglObj = new Date(alat.tanggal); let bln = alat.jadwal_pm.includes("6 Bulan") ? 6 : (alat.jadwal_pm.includes("12 Bulan") ? 12 : 0);
             if(bln > 0) { tglObj.setMonth(tglObj.getMonth() + bln); tglTampil = tglObj.toISOString().split('T')[0]; } else { tglTampil = "Sesuai Kebutuhan"; }
         }
-        const tr = document.createElement('tr');
         
-        // Modifikasi Kolom Aksi untuk memuat Tombol QR dan Hapus berdampingan
+        const tr = document.createElement('tr');
+        // MEMBERIKAN ID PADA SETIAP BARIS TABEL AGAR BISA DILACAK OLEH SEARCH
+        tr.id = `row-${alat.id.replace(/\s+/g, '-')}`;
+        
         tr.innerHTML = `
             <td><b>${alat.id}</b></td><td>${alat.kategori}</td>
             <td style="text-align:center"><b>${tglTampil}</b><br><span style="font-size:10px; color:gray">${alat.jadwal_pm}</span></td>
@@ -218,29 +258,12 @@ function renderTabelInventaris() {
     });
 }
 
-// FUNGSI KHUSUS PEMBUAT DAN PENCETAK QR CODE
 function lihatQR(id, kategori) {
-    bukaModal('qrModal');
-    document.getElementById('qrLabel').innerText = id;
-    document.getElementById('qrKategori').innerText = kategori;
-    
-    const qrBox = document.getElementById('qrcodeBox');
-    qrBox.innerHTML = ""; // Bersihkan QR sebelumnya agar tidak menumpuk
-    
-    // Mesin pembuat QR Code
-    new QRCode(qrBox, {
-        text: id, // Kode yang disematkan ke dalam gambar QR
-        width: 150,
-        height: 150,
-        colorDark : "#0F172A",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-    });
+    bukaModal('qrModal'); document.getElementById('qrLabel').innerText = id; document.getElementById('qrKategori').innerText = kategori;
+    const qrBox = document.getElementById('qrcodeBox'); qrBox.innerHTML = ""; 
+    new QRCode(qrBox, { text: id, width: 150, height: 150, colorDark : "#0F172A", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
 }
-
-function cetakAreaQR() {
-    window.print(); // Ini akan memicu CSS @media print yang menyembunyikan elemen web lainnya
-}
+function cetakAreaQR() { window.print(); }
 
 // ================= EKSPOR PDF (LAPORAN ANALISIS CERDAS) =================
 function cetakPDF() {
