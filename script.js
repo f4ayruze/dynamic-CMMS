@@ -59,16 +59,12 @@ function cekPeringatanPM() {
         const jatuhTempo = new Date(tglPM.setMonth(tglPM.getMonth() + bulanInterval));
         const sisaHari = Math.ceil((jatuhTempo - hariIni) / (1000 * 60 * 60 * 24));
 
-        // Jika mendekati atau terlewat, masukkan ke daftar peringatan
         if (sisaHari <= 30 && sisaHari >= 0) { daftarAlatWarning.push(`<b>${alat.id}</b> (Sisa ${sisaHari} hari)`); } 
         else if (sisaHari < 0) { daftarAlatWarning.push(`<b>${alat.id}</b> (<span style="color:var(--med-red)">Lewat ${Math.abs(sisaHari)} hr</span>)`); }
     });
 
     if(daftarAlatWarning.length > 0) { 
-        // Mengubah daftar string menjadi list item (dibungkus div bergaris bawah)
         let listHTML = daftarAlatWarning.map(item => `<div style="padding: 4px 0; border-bottom: 1px solid #CBD5E1;">${item}</div>`).join('');
-        
-        // Membungkus listHTML ke dalam div scrollable (max-height: 80px hanya muat ±3 baris, sisanya digulir)
         wadahPeringatan.innerHTML = `
             <div class="warning-box" style="align-items: center;">
                 <div style="font-size: 24px; padding-right: 5px;">💡</div>
@@ -95,7 +91,6 @@ function cariAlat() {
     if(hasil.length === 0) { resultDiv.innerHTML = "<p style='font-size:12px; color:gray; text-align:center;'>Alat tidak ditemukan.</p>"; return; }
     
     hasil.forEach(alat => { 
-        // Membuat kotak pencarian secara dinamis dan menempelkan fungsi loncatKeInventaris saat diklik
         const divBox = document.createElement('div');
         divBox.className = 'search-result-item';
         divBox.innerHTML = `<b>${alat.id}</b> - ${alat.kategori}<br><span style="font-size:11px; color:gray;">Status: ${alat.status}</span>`;
@@ -105,31 +100,25 @@ function cariAlat() {
 }
 
 function loncatKeInventaris(idAlat) {
-    tutupModal('searchModal'); // Tutup pop-up pencarian
-    
+    tutupModal('searchModal'); 
     const alat = db_alat.find(a => a.id === idAlat);
     if(!alat) return;
     
-    // Tentukan apakah alat ini ada di tab "Berfungsi" atau "Perbaikan"
     const butuhPerbaikan = alat.status.includes("TIDAK LAIK") || alat.status.includes("PERBAIKAN") || alat.status.includes("RUSAK");
     tabInventarisAktif = butuhPerbaikan ? 'perbaikan' : 'berfungsi';
     
-    // Pindah ke Halaman Inventaris (fungsi ini akan me-render tabel ulang sesuai tab)
     bukaHalaman('page-inventaris');
     
-    // Beri jeda sangat singkat agar browser merender tabel HTML-nya terlebih dahulu
     setTimeout(() => {
-        // Cari ID Baris di tabel (menghindari error spasi dengan regex pembersih)
         const rowId = `row-${idAlat.replace(/\s+/g, '-')}`;
         const targetRow = document.getElementById(rowId);
         
         if(targetRow) {
-            // Gulir layar (scroll) tepat ke baris tersebut
             targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Nyalakan efek warna kuning stabilo berkedip
+            // Tambahkan kelas CSS highlight ke baris tersebut
             targetRow.classList.add('row-highlight');
-            // Matikan efek highlight setelah 3 detik
-            setTimeout(() => { targetRow.classList.remove('row-highlight'); }, 3000);
+            // Matikan efek highlight setelah 5 detik penuh
+            setTimeout(() => { targetRow.classList.remove('row-highlight'); }, 5000);
         }
     }, 300);
 }
@@ -240,8 +229,7 @@ function renderTabelInventaris() {
         }
         
         const tr = document.createElement('tr');
-        // MEMBERIKAN ID PADA SETIAP BARIS TABEL AGAR BISA DILACAK OLEH SEARCH
-        tr.id = `row-${alat.id.replace(/\s+/g, '-')}`;
+        tr.id = `row-${alat.id.replace(/\s+/g, '-')}`; // ID BARIS
         
         tr.innerHTML = `
             <td><b>${alat.id}</b></td><td>${alat.kategori}</td>

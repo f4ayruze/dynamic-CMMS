@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart CMMS - Medical UI</title>
+    <!-- Versi 5 untuk memaksa perbaruan warna kotak pencarian -->
     <link rel="stylesheet" href="web.css">
 </head>
 <body>
@@ -32,7 +33,6 @@
             <button class="btn-submit btn-red" onclick="tutupKamera()" style="width: 150px; margin-top: 15px;">Batal Scan</button>
         </div>
 
-        <!-- WADAH PERINGATAN PM YANG SUDAH DIPERBARUI -->
         <div id="peringatanPM"></div>
 
         <h2>Menu Cepat</h2>
@@ -153,7 +153,6 @@
     <div class="modal-content">
         <h3 style="margin-bottom:10px;">🔍 Cari Alat Medis</h3>
         <input type="text" id="searchInput" onkeyup="cariAlat()" placeholder="Ketik ID atau Kategori Alat...">
-        <!-- Hasil pencarian akan muncul di sini dan bisa dipencet -->
         <div id="searchResults" style="max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
         <button class="btn-submit" onclick="tutupModal('searchModal')" style="margin-top: 20px;">Tutup</button>
     </div>
@@ -167,7 +166,6 @@
     </div>
 </div>
 
-<!-- MODAL QR CODE -->
 <div id="qrModal" class="modal">
     <div class="modal-content" style="text-align: center;">
         <h3 style="margin-bottom: 15px;">📱 Label QR Code Alat</h3>
@@ -183,12 +181,11 @@
     </div>
 </div>
 
-<!-- LIBRARIES -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<script src="script.js?v=4"></script>
+<script src="script.js?v=5"></script>
 </body>
 </html>
