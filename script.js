@@ -162,7 +162,7 @@ function simpanPerbaikan() {
     simpanDatabase(); tampilAlert(alertBox, `Status diubah: ${status_baru}`, "var(--med-orange)"); muatDropdownPerbaikan(); 
 }
 
-// ================= INVENTARIS & RINGKASAN =================
+// ================= INVENTARIS & GENERATOR QR =================
 function gantiTabInventaris(tab) {
     tabInventarisAktif = tab;
     document.getElementById('tab_berfungsi').className = (tab === 'berfungsi') ? 'tab-btn active' : 'tab-btn';
@@ -173,7 +173,6 @@ function gantiTabInventaris(tab) {
 function renderTabelInventaris() {
     const tbody = document.getElementById('tbody_inventaris'); tbody.innerHTML = "";
     
-    // 1. Hitung Ringkasan Data
     const totalAlat = db_alat.length;
     const totalPerbaikan = db_alat.filter(a => a.status.includes("TIDAK LAIK") || a.status.includes("PERBAIKAN") || a.status.includes("RUSAK")).length;
     const totalBerfungsi = totalAlat - totalPerbaikan;
@@ -184,7 +183,6 @@ function renderTabelInventaris() {
         <div class="summary-box merah"><h4>Perbaikan</h4><span>${totalPerbaikan}</span></div>
     `;
     
-    // 2. Filter Tabel
     const dataTerfilter = db_alat.filter(alat => {
         const butuhPerbaikan = alat.status.includes("TIDAK LAIK") || alat.status.includes("PERBAIKAN") || alat.status.includes("RUSAK");
         if(tabInventarisAktif === 'berfungsi') return !butuhPerbaikan;
@@ -203,76 +201,76 @@ function renderTabelInventaris() {
             if(bln > 0) { tglObj.setMonth(tglObj.getMonth() + bln); tglTampil = tglObj.toISOString().split('T')[0]; } else { tglTampil = "Sesuai Kebutuhan"; }
         }
         const tr = document.createElement('tr');
+        
+        // Modifikasi Kolom Aksi untuk memuat Tombol QR dan Hapus berdampingan
         tr.innerHTML = `
             <td><b>${alat.id}</b></td><td>${alat.kategori}</td>
             <td style="text-align:center"><b>${tglTampil}</b><br><span style="font-size:10px; color:gray">${alat.jadwal_pm}</span></td>
             <td><b>${alat.status}</b></td>
-            <td><button onclick="hapusAlat('${alat.id}')" style="background:var(--med-red); color:white; border:2px solid var(--black); padding:4px 8px; border-radius:4px; cursor:pointer;">Hapus</button></td>
+            <td>
+                <div style="display:flex; gap:5px; justify-content:center;">
+                    <button class="btn-aksi btn-qr" onclick="lihatQR('${alat.id}', '${alat.kategori}')">QR</button>
+                    <button class="btn-aksi" style="background:var(--med-red); color:white;" onclick="hapusAlat('${alat.id}')">🗑️</button>
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+// FUNGSI KHUSUS PEMBUAT DAN PENCETAK QR CODE
+function lihatQR(id, kategori) {
+    bukaModal('qrModal');
+    document.getElementById('qrLabel').innerText = id;
+    document.getElementById('qrKategori').innerText = kategori;
+    
+    const qrBox = document.getElementById('qrcodeBox');
+    qrBox.innerHTML = ""; // Bersihkan QR sebelumnya agar tidak menumpuk
+    
+    // Mesin pembuat QR Code
+    new QRCode(qrBox, {
+        text: id, // Kode yang disematkan ke dalam gambar QR
+        width: 150,
+        height: 150,
+        colorDark : "#0F172A",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+}
+
+function cetakAreaQR() {
+    window.print(); // Ini akan memicu CSS @media print yang menyembunyikan elemen web lainnya
+}
+
 // ================= EKSPOR PDF (LAPORAN ANALISIS CERDAS) =================
 function cetakPDF() {
     alert("⏳ Sedang memproses dokumen PDF... Mohon tunggu sebentar.");
-    
     try {
-        if (!window.jspdf) {
-            alert("❌ GAGAL: Mesin pembuat PDF belum selesai diunduh oleh browser. Pastikan koneksi internet lancar lalu coba lagi.");
-            return;
-        }
-        if (db_alat.length === 0) {
-            alert("⚠️ GAGAL: Database masih kosong! Silakan daftarkan minimal 1 alat terlebih dahulu.");
-            return;
-        }
+        if (!window.jspdf) { alert("❌ GAGAL: Mesin pembuat PDF belum selesai diunduh oleh browser."); return; }
+        if (db_alat.length === 0) { alert("⚠️ GAGAL: Database masih kosong!"); return; }
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'pt', 'a4'); 
-
+        const { jsPDF } = window.jspdf; const doc = new jsPDF('l', 'pt', 'a4'); 
         doc.setFontSize(16); doc.text("Laporan Inventaris & Status Kelayakan Alat Medis", 40, 40);
         doc.setFontSize(10); doc.text("Dicetak pada: " + new Date().toLocaleString("id-ID"), 40, 60);
 
-        const tableColumn = ["ID Alat", "Kategori", "Status Terkini", "Analisis & Kesimpulan Kelayakan"];
-        const tableRows = [];
+        const tableColumn = ["ID Alat", "Kategori", "Status Terkini", "Analisis & Kesimpulan Kelayakan"]; const tableRows = [];
 
         db_alat.forEach(alat => {
-            let kesimpulan = "";
-            const toleransi = MASTER_SOP[alat.kategori] || "-";
-
-            // FILTER: Buang semua emoji khusus dari status dan jadwal PM agar font PDF tidak error
+            let kesimpulan = ""; const toleransi = MASTER_SOP[alat.kategori] || "-";
             const statusPDF = (alat.status || "").replace(/🟢|🟡|🔴|🔧/g, '').trim();
             const jadwalPDF = (alat.jadwal_pm || "").replace(/🟢|🟡|🔴|🔧/g, '').trim();
 
-            if (alat.status.includes("LAIK PAKAI")) {
-                kesimpulan = `Alat berfungsi sangat baik. Lolos uji kalibrasi dengan error dalam batas aman SOP Pabrik (± ${toleransi}). EM Score: ${alat.em_score}. Sepenuhnya aman dioperasikan.`;
-            } else if (alat.status.includes("LAIK BERSYARAT")) {
-                kesimpulan = `Berfungsi namun perlu pengawasan. Ada titik uji melenceng dari toleransi standar (± ${toleransi}), tetapi belum fatal. Disarankan kalibrasi ulang dalam waktu dekat.`;
-            } else if (alat.status.includes("TIDAK LAIK") || alat.status.includes("RUSAK")) {
-                kesimpulan = `STATUS BERBAHAYA. Gagal memenuhi standar kalibrasi (melampaui toleransi ± ${toleransi}) atau ada kerusakan fisik. Tarik alat dari layanan klinis segera.`;
-            } else if (alat.status.includes("PERBAIKAN")) {
-                kesimpulan = `Sedang dalam masa servis teknisi. Catatan: "${alat.catatan || 'Tidak ada catatan khusus'}". Alat tidak boleh digunakan sampai selesai diservis dan dikalibrasi ulang.`;
-            } else {
-                kesimpulan = `Data registrasi awal. Belum ada rekam uji kalibrasi. Membutuhkan jadwal inspeksi (Jadwal PM: ${jadwalPDF}).`;
-            }
-            
-            // Masukkan variabel yang emojinya sudah dibersihkan (statusPDF) ke dalam baris tabel PDF
+            if (alat.status.includes("LAIK PAKAI")) { kesimpulan = `Alat berfungsi sangat baik. Lolos uji kalibrasi dengan error dalam batas aman SOP Pabrik (± ${toleransi}). EM Score: ${alat.em_score}. Sepenuhnya aman dioperasikan.`; } 
+            else if (alat.status.includes("LAIK BERSYARAT")) { kesimpulan = `Berfungsi namun perlu pengawasan. Ada titik uji melenceng dari toleransi standar (± ${toleransi}), tetapi belum fatal. Disarankan kalibrasi ulang dalam waktu dekat.`; } 
+            else if (alat.status.includes("TIDAK LAIK") || alat.status.includes("RUSAK")) { kesimpulan = `STATUS BERBAHAYA. Gagal memenuhi standar kalibrasi (melampaui toleransi ± ${toleransi}) atau ada kerusakan fisik. Tarik alat dari layanan klinis segera.`; } 
+            else if (alat.status.includes("PERBAIKAN")) { kesimpulan = `Sedang dalam masa servis teknisi. Catatan: "${alat.catatan || 'Tidak ada catatan khusus'}". Alat tidak boleh digunakan sampai selesai diservis dan dikalibrasi ulang.`; } 
+            else { kesimpulan = `Data registrasi awal. Belum ada rekam uji kalibrasi. Membutuhkan jadwal inspeksi (Jadwal PM: ${jadwalPDF}).`; }
             tableRows.push([alat.id, alat.kategori, statusPDF, kesimpulan]);
         });
 
-        doc.autoTable({
-            head: [tableColumn], body: tableRows, startY: 80,
-            styles: { fontSize: 9, cellPadding: 6 },
-            columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 100 }, 2: { cellWidth: 110 }, 3: { cellWidth: 'auto' } },
-            headStyles: { fillColor: [56, 189, 248], textColor: 15 } 
-        });
-
+        doc.autoTable({ head: [tableColumn], body: tableRows, startY: 80, styles: { fontSize: 9, cellPadding: 6 }, columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 100 }, 2: { cellWidth: 110 }, 3: { cellWidth: 'auto' } }, headStyles: { fillColor: [56, 189, 248], textColor: 15 } });
         doc.save("Laporan_Analisis_CMMS.pdf");
-        
-    } catch (error) {
-        console.error(error);
-        alert("❌ Terjadi kesalahan fatal pada sistem pembuat PDF: " + error.message);
-    }
+    } catch (error) { alert("❌ Terjadi kesalahan: " + error.message); }
 }
 
 function hapusAlat(id) { if(confirm(`Memutihkan (menghapus) alat ${id}?`)) { db_alat = db_alat.filter(alat => alat.id !== id); simpanDatabase(); renderTabelInventaris(); cekPeringatanPM(); } }
